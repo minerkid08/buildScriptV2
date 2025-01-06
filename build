@@ -1,0 +1,3 @@
+#!/bin/bash
+
+g++ -Iinclude -g buildScript/src/*.cpp -o main

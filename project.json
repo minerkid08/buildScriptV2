@@ -1,0 +1,17 @@
+{
+  "projects": [
+    {
+      "name": "buildScript",
+      "type": "program",
+      "out": "main",
+      "build": [],
+      "include": ["include"],
+      "libs": ["json"]
+    },
+    {
+      "name": "json",
+      "type": "header",
+      "export": "."
+    }
+  ]
+}
