@@ -1,0 +1,7 @@
+{
+  "name": "lib",
+	"build": [],
+	"type": "static",
+	"out": "lib.a",
+  "export": ["."]
+}

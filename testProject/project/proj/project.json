@@ -1,8 +1,7 @@
-
+{
   "name": "proj",
 	"build": [],
 	"type": "Program",
 	"out": "out",
-	"dll": [],
-	"sdll": [],
+  "libs": "lib"
 }

@@ -21,6 +21,7 @@ struct Project
 	std::vector<std::string> exportPaths;
 
   bool built = false;
+  bool processed = false;
 };
 
 struct JsonObjects

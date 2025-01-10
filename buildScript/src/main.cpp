@@ -1,6 +1,8 @@
 #include "process.hpp"
 #include "project.hpp"
 
+#include "json/json.hpp"
+#include <cstring>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
@@ -8,7 +10,16 @@
 #include <ostream>
 #include <string>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <vector>
+
+enum class Mode
+{
+	Build,
+	Configure
+};
+
+Mode mode = Mode::Build;
 
 std::string target = "debug";
 
@@ -104,10 +115,18 @@ void buildProjectTree(Project& project, std::vector<Project>& projects);
 
 int main(int argc, const char** argv)
 {
-	if (argc != 2 && argc != 3)
+	if (argc == 1)
 	{
-		std::cout << "expected 2 or 3 args, got " << argc << '\n';
+		std::cout << "expected at least 1 arg\n";
 		return 1;
+	}
+
+	if (argc > 2)
+	{
+		if (strcmp(argv[2], "-c") == 0)
+		{
+			mode = Mode::Configure;
+		}
 	}
 
 	std::string proj;
@@ -118,7 +137,7 @@ int main(int argc, const char** argv)
 
 	JsonObjects objects;
 	objects.projectPath = std::filesystem::absolute("./");
-	objects.libPath = std::filesystem::absolute("./");
+	objects.libPath = "../libs";
 
 	nlohmann::json cacheJson;
 	if (std::filesystem::exists("cache.json"))
@@ -135,9 +154,36 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 	std::ifstream ifstream("project.json");
-	ifstream >> json;
+	try
+	{
+		ifstream >> json;
+	}
+	catch (nlohmann::json::parse_error e)
+	{
+		std::cerr << "./project.json parse error\n" << e.what() << '\n';
+		return 1;
+	}
 	objects.projectJson = json["projects"];
-	objects.libJson = json["projects"];
+
+	nlohmann::json json2;
+	std::string json2Path = objects.libPath.string() + "/project.json";
+	if (!std::filesystem::exists(json2Path))
+	{
+		std::cerr << "cant find \'" << json2Path << "\'\n";
+		return 1;
+	}
+	std::ifstream ifstream2(json2Path);
+	try
+	{
+		ifstream2 >> json2;
+	}
+	catch (nlohmann::json::parse_error e)
+	{
+		std::cerr << '\'' << json2Path << "\' parse error\n" << e.what() << '\n';
+		return 1;
+	}
+
+	objects.libJson = json2["projects"];
 
 	std::vector<Project> projects;
 	projects.push_back({});
@@ -170,19 +216,46 @@ int main(int argc, const char** argv)
 			libsToFind.push_back(s);
 	}
 
-	unsigned long time = 0;
-	if (cacheJson.contains("time"))
-		time = cacheJson["time"];
+	if (mode == Mode::Configure)
+	{
+		std::string out;
+		for (const std::filesystem::path& path : projects[0].include)
+		{
+			out += "-I" + path.string() + '\n';
+		}
+		for (const Project& p : projects)
+		{
+			for (const std::string& s : projects[0].libs)
+			{
+				if (p.name != s)
+					continue;
+				for (const std::filesystem::path& path : p.exportPaths)
+				{
+					out += "-I" + path.string() + '\n';
+				}
+			}
+		}
+		std::ofstream stream("compile-flags.txt");
+		stream << out;
+		stream.close();
+	}
 
-	buildProjectTree(projects[0], projects);
+	if (mode == Mode::Build)
+	{
+		unsigned long time = 0;
+		if (cacheJson.contains("time"))
+			time = cacheJson["time"];
 
-	std::cout << "build sucessful\n";
+		buildProjectTree(projects[0], projects);
 
-	long now = std::time(0);
-	struct tm* tm = gmtime(&now);
-	time = timegm(tm);
-	cacheJson["time"] = time;
-	std::ofstream("cache.json") << cacheJson.dump(2);
+		std::cout << "build sucessful\n";
+
+		long now = std::time(0);
+		struct tm* tm = gmtime(&now);
+		time = timegm(tm);
+		cacheJson["time"] = time;
+		std::ofstream("cache.json") << cacheJson.dump(2);
+	}
 }
 
 void buildProjectTree(Project& project, std::vector<Project>& projects)
@@ -193,7 +266,7 @@ void buildProjectTree(Project& project, std::vector<Project>& projects)
 		{
 			if (p.name == lib)
 			{
-				if (!p.built)
+				if (!p.processed)
 					buildProjectTree(p, projects);
 				break;
 			}
@@ -204,7 +277,7 @@ void buildProjectTree(Project& project, std::vector<Project>& projects)
 
 void buildProject(Project& project, const std::vector<Project>& projects)
 {
-	project.built = true;
+	project.processed = true;
 	if (project.type == ProjectType::Header)
 		return;
 	std::vector<std::filesystem::path> toBuild;
@@ -215,9 +288,12 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		toProcess.push_back(str);
 	}
 	std::string includePaths;
+	std::string linkerLibs;
+
 	for (const std::filesystem::path& str : project.include)
 		includePaths += std::string("-I") + str.string() + ' ';
 
+	bool builtSomething = false;
 	for (const Project& p : projects)
 	{
 		for (const std::string& s : project.libs)
@@ -226,12 +302,16 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 			{
 				for (const std::filesystem::path& str : p.exportPaths)
 					includePaths += std::string("-I") + str.string() + ' ';
+				if (p.type == ProjectType::Static)
+					linkerLibs += (p.path / "bin" / p.out).string() + ' ';
+				builtSomething |= p.built;
 				break;
 			}
 		}
 	}
 
 	std::string linkerArgs;
+
 	while (toProcess.size() > 0)
 	{
 		std::filesystem::path curPath = toProcess[toProcess.size() - 1];
@@ -256,8 +336,9 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		}
 	}
 
-	if (toBuild.size() > 0)
+	if (toBuild.size() > 0 || builtSomething)
 	{
+    project.built = true;
 		std::cout << "--- Building Target \'" << project.name << "\' ---\n";
 
 		for (const std::filesystem::path& file : toBuild)
@@ -269,19 +350,30 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 			}
 		}
 
-		linkerArgs += "-o bin/" + project.out;
+		std::filesystem::path outFile = project.path / "bin" / project.out;
+
+		linkerArgs += linkerLibs;
 
 		std::string out;
-		std::filesystem::create_directories(std::filesystem::path("bin/" + project.out).parent_path());
+		std::filesystem::create_directories(outFile.parent_path());
 		std::cout << "linking ";
 		std::cout.flush();
-		runCmd("g++", linkerArgs.c_str(), &out);
+		if (project.type == ProjectType::Static)
+		{
+			linkerArgs = "rcs " + outFile.string() + ' ' + linkerArgs;
+			runCmd("ar", linkerArgs.c_str(), &out);
+		}
+		else
+		{
+			linkerArgs += "-o " + outFile.string();
+			runCmd("g++", linkerArgs.c_str(), &out);
+		}
 
-		if (std::filesystem::exists("bin/" + project.out))
+		if (std::filesystem::exists(outFile))
 			std::cout << "done\n";
 		else
 		{
-			std::cout << "\n" << out << "\nbuild failed\n";
+			std::cout << "\nar " << linkerArgs << '\n' << out << "\nbuild failed\n";
 			exit(1);
 		}
 	}
