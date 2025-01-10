@@ -266,7 +266,7 @@ void buildProjectTree(Project& project, std::vector<Project>& projects)
 		{
 			if (p.name == lib)
 			{
-				if (!p.built)
+				if (!p.processed)
 					buildProjectTree(p, projects);
 				break;
 			}
@@ -277,7 +277,7 @@ void buildProjectTree(Project& project, std::vector<Project>& projects)
 
 void buildProject(Project& project, const std::vector<Project>& projects)
 {
-	project.built = true;
+	project.processed = true;
 	if (project.type == ProjectType::Header)
 		return;
 	std::vector<std::filesystem::path> toBuild;
@@ -293,6 +293,7 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 	for (const std::filesystem::path& str : project.include)
 		includePaths += std::string("-I") + str.string() + ' ';
 
+	bool builtSomething = false;
 	for (const Project& p : projects)
 	{
 		for (const std::string& s : project.libs)
@@ -303,6 +304,7 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 					includePaths += std::string("-I") + str.string() + ' ';
 				if (p.type == ProjectType::Static)
 					linkerLibs += (p.path / "bin" / p.out).string() + ' ';
+				builtSomething |= p.built;
 				break;
 			}
 		}
@@ -334,8 +336,9 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		}
 	}
 
-	if (toBuild.size() > 0)
+	if (toBuild.size() > 0 || builtSomething)
 	{
+    project.built = true;
 		std::cout << "--- Building Target \'" << project.name << "\' ---\n";
 
 		for (const std::filesystem::path& file : toBuild)
@@ -370,7 +373,7 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 			std::cout << "done\n";
 		else
 		{
-			std::cout << "\n" << out << "\nbuild failed\n";
+			std::cout << "\nar " << linkerArgs << '\n' << out << "\nbuild failed\n";
 			exit(1);
 		}
 	}
