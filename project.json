@@ -5,7 +5,22 @@
       "type": "program",
       "out": "main",
       "build": [],
-      "include": ["include"],
+      "libs": ["project", "json"]
+    },
+    {
+      "name": "configure",
+      "type": "program",
+      "out": "main",
+      "build": [],
+      "libs": ["project", "json"]
+    },
+    {
+      "name": "project",
+      "type": "static",
+      "out": "project.a",
+      "build": [],
+      "include": ["src/export"],
+      "export": "src/export",
       "libs": ["json"]
     },
     {
