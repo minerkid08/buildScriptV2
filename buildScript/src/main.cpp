@@ -105,6 +105,7 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	}
 	else
 	{
+		std::cout << "\ng++ " << args << '\n';
 		std::cout << out << '\n';
 		return true;
 	}
@@ -138,14 +139,6 @@ int main(int argc, const char** argv)
 	JsonObjects objects;
 	objects.projectPath = std::filesystem::absolute("./");
 	objects.libPath = "../libs";
-
-	nlohmann::json cacheJson;
-	if (std::filesystem::exists("cache.json"))
-	{
-		std::ifstream ifstream("cache.json");
-		ifstream >> cacheJson;
-		lastCompileTime = cacheJson["time"];
-	}
 
 	nlohmann::json json;
 	if (!std::filesystem::exists("project.json"))
@@ -242,6 +235,15 @@ int main(int argc, const char** argv)
 
 	if (mode == Mode::Build)
 	{
+		nlohmann::json cacheJson;
+		if (std::filesystem::exists(projects[0].path / "cache.json"))
+		{
+			std::ifstream ifstream(projects[0].path / "cache.json");
+			ifstream >> cacheJson;
+			lastCompileTime = cacheJson["time"];
+			ifstream.close();
+		}
+
 		unsigned long time = 0;
 		if (cacheJson.contains("time"))
 			time = cacheJson["time"];
@@ -254,7 +256,9 @@ int main(int argc, const char** argv)
 		struct tm* tm = gmtime(&now);
 		time = timegm(tm);
 		cacheJson["time"] = time;
-		std::ofstream("cache.json") << cacheJson.dump(2);
+		std::ofstream ofstream(projects[0].path / "cache.json");
+		ofstream << cacheJson.dump(2);
+		ofstream.close();
 	}
 }
 
@@ -303,7 +307,10 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 				for (const std::filesystem::path& str : p.exportPaths)
 					includePaths += std::string("-I") + str.string() + ' ';
 				if (p.type == ProjectType::Static)
-					linkerLibs += (p.path / "bin" / p.out).string() + ' ';
+        {
+          linkerLibs += ' ';
+					linkerLibs += (p.path / "bin" / p.out).string();
+        }
 				builtSomething |= p.built;
 				break;
 			}
@@ -330,7 +337,8 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 					linkerFile = std::filesystem::relative(linkerFile, project.path);
 					linkerFile.replace_extension(".o");
 					linkerFile = project.path / "cache" / linkerFile;
-					linkerArgs += linkerFile.string() + ' ';
+					linkerArgs += ' ';
+					linkerArgs += linkerFile.string();
 				}
 			}
 		}
@@ -338,7 +346,7 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 
 	if (toBuild.size() > 0 || builtSomething)
 	{
-    project.built = true;
+		project.built = true;
 		std::cout << "--- Building Target \'" << project.name << "\' ---\n";
 
 		for (const std::filesystem::path& file : toBuild)
@@ -360,20 +368,23 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		std::cout.flush();
 		if (project.type == ProjectType::Static)
 		{
-			linkerArgs = "rcs " + outFile.string() + ' ' + linkerArgs;
+			linkerArgs = "rcs " + outFile.string() + linkerArgs;
 			runCmd("ar", linkerArgs.c_str(), &out);
 		}
 		else
 		{
-			linkerArgs += "-o " + outFile.string();
-			runCmd("g++", linkerArgs.c_str(), &out);
+			linkerArgs += " -o " + outFile.string();
+			runCmd("g++", linkerArgs.c_str() + 1, &out);
 		}
 
 		if (std::filesystem::exists(outFile))
 			std::cout << "done\n";
 		else
 		{
-			std::cout << "\nar " << linkerArgs << '\n' << out << "\nbuild failed\n";
+			if (project.type == ProjectType::Static)
+				std::cout << "\nar " << linkerArgs << '\n' << out << "\nbuild failed\n";
+			else
+				std::cout << "\ng++ " << (linkerArgs.c_str() + 1) << '\n' << out << "\nbuild failed\n";
 			exit(1);
 		}
 	}
