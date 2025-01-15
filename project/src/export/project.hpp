@@ -10,11 +10,17 @@ enum class ProjectType
   Program, Static, Header
 };
 
+enum class ProjectLang
+{
+  CPP, C
+};
+
 struct Project
 {
 	std::string name;
 	std::string out;
   ProjectType type;
+  ProjectLang lang;
   std::filesystem::path path;
 	std::vector<std::string> build;
 	std::vector<std::string> libs;
