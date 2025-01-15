@@ -1,7 +1,7 @@
 #include "export/project.hpp"
 #include <cstdlib>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 void findProject(const char* name, const JsonObjects& objects, Project* project)
 {
@@ -100,5 +100,17 @@ void parseProject(const nlohmann::json& json, Project* p)
 	{
 		for (const std::string& str : json["libs"])
 			p->libs.push_back(str);
+	}
+	if (json.contains("lang"))
+	{
+		std::string lang = json["lang"];
+		if (lang == "cpp")
+			p->lang = ProjectLang::CPP;
+		else
+			p->lang = ProjectLang::C;
+	}
+	else
+	{
+		p->lang = ProjectLang::CPP;
 	}
 }

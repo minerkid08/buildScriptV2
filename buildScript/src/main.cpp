@@ -11,6 +11,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <vector>
 
 enum class Mode
@@ -24,6 +25,7 @@ Mode mode = Mode::Build;
 std::string target = "debug";
 
 unsigned long lastCompileTime;
+unsigned long nowTime;
 
 unsigned long getFileWriteTime(const char* filename)
 {
@@ -97,7 +99,10 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	std::cout << "building: " << std::filesystem::relative(file, project.path).string();
 	std::cout.flush();
 	std::string out;
-	runCmd("g++", args.c_str(), &out);
+	if (project.lang == ProjectLang::CPP)
+		runCmd("g++", args.c_str(), &out);
+	else
+		runCmd("gcc", args.c_str(), &out);
 	if (std::filesystem::exists(outFile))
 	{
 		std::cout << " done\n";
@@ -105,7 +110,10 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	}
 	else
 	{
-		std::cout << "\ng++ " << args << '\n';
+		if (project.lang == ProjectLang::CPP)
+			std::cout << "\ng++ " << args << '\n';
+		else
+			std::cout << "\ngcc " << args << '\n';
 		std::cout << out << '\n';
 		return true;
 	}
@@ -126,7 +134,8 @@ int main(int argc, const char** argv)
 	{
 		if (strcmp(argv[2], "-c") == 0)
 		{
-			mode = Mode::Configure;
+      char* c = 0;
+      execvp("buildCfg", &c);
 		}
 	}
 
@@ -235,30 +244,14 @@ int main(int argc, const char** argv)
 
 	if (mode == Mode::Build)
 	{
-		nlohmann::json cacheJson;
-		if (std::filesystem::exists(projects[0].path / "cache.json"))
-		{
-			std::ifstream ifstream(projects[0].path / "cache.json");
-			ifstream >> cacheJson;
-			lastCompileTime = cacheJson["time"];
-			ifstream.close();
-		}
-
-		unsigned long time = 0;
-		if (cacheJson.contains("time"))
-			time = cacheJson["time"];
-
-		buildProjectTree(projects[0], projects);
 
 		std::cout << "build sucessful\n";
 
 		long now = std::time(0);
 		struct tm* tm = gmtime(&now);
-		time = timegm(tm);
-		cacheJson["time"] = time;
-		std::ofstream ofstream(projects[0].path / "cache.json");
-		ofstream << cacheJson.dump(2);
-		ofstream.close();
+		nowTime = timegm(tm);
+
+		buildProjectTree(projects[0], projects);
 	}
 }
 
@@ -284,6 +277,18 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 	project.processed = true;
 	if (project.type == ProjectType::Header)
 		return;
+
+	nlohmann::json cacheJson;
+	if (std::filesystem::exists(project.path / "cache.json"))
+	{
+		std::ifstream ifstream(project.path / "cache.json");
+		ifstream >> cacheJson;
+		lastCompileTime = cacheJson["time"];
+		ifstream.close();
+	}
+	else
+		lastCompileTime = 0;
+
 	std::vector<std::filesystem::path> toBuild;
 	std::vector<std::filesystem::path> toProcess;
 
@@ -307,10 +312,10 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 				for (const std::filesystem::path& str : p.exportPaths)
 					includePaths += std::string("-I") + str.string() + ' ';
 				if (p.type == ProjectType::Static)
-        {
-          linkerLibs += ' ';
+				{
+					linkerLibs += ' ';
 					linkerLibs += (p.path / "bin" / p.out).string();
-        }
+				}
 				builtSomething |= p.built;
 				break;
 			}
@@ -344,6 +349,11 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		}
 	}
 
+	cacheJson["time"] = nowTime;
+	std::ofstream ofstream(project.path / "cache.json");
+	ofstream << cacheJson.dump(2);
+	ofstream.close();
+
 	if (toBuild.size() > 0 || builtSomething)
 	{
 		project.built = true;
@@ -374,7 +384,10 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		else
 		{
 			linkerArgs += " -o " + outFile.string();
-			runCmd("g++", linkerArgs.c_str() + 1, &out);
+			if (project.lang == ProjectLang::CPP)
+				runCmd("g++", linkerArgs.c_str() + 1, &out);
+			else
+				runCmd("gcc", linkerArgs.c_str() + 1, &out);
 		}
 
 		if (std::filesystem::exists(outFile))
@@ -384,7 +397,12 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 			if (project.type == ProjectType::Static)
 				std::cout << "\nar " << linkerArgs << '\n' << out << "\nbuild failed\n";
 			else
-				std::cout << "\ng++ " << (linkerArgs.c_str() + 1) << '\n' << out << "\nbuild failed\n";
+			{
+				if (project.lang == ProjectLang::CPP)
+					std::cout << "\ng++ " << (linkerArgs.c_str() + 1) << '\n' << out << "\nbuild failed\n";
+				else
+					std::cout << "\ngcc " << (linkerArgs.c_str() + 1) << '\n' << out << "\nbuild failed\n";
+			}
 			exit(1);
 		}
 	}
