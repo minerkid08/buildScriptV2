@@ -130,9 +130,9 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 
-	if (argc > 2)
+	if (argc > 1)
 	{
-		if (strcmp(argv[2], "-c") == 0)
+		if (strcmp(argv[1], "-c") == 0)
 		{
       char* c = 0;
       execvp("buildCfg", &c);
@@ -244,14 +244,13 @@ int main(int argc, const char** argv)
 
 	if (mode == Mode::Build)
 	{
-
-		std::cout << "build sucessful\n";
-
 		long now = std::time(0);
 		struct tm* tm = gmtime(&now);
 		nowTime = timegm(tm);
 
 		buildProjectTree(projects[0], projects);
+
+		std::cout << "build sucessful\n";
 	}
 }
 
