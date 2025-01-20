@@ -2,5 +2,5 @@ CompileFlags:
   Add: [
 
     -I/home/user/cppgames/buildScriptV2/./project/src/export,
-    -I/home/user/cppgames/buildScriptV2/./json/.
+    -I../libs/json/.
 ]

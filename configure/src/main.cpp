@@ -79,8 +79,10 @@ int main()
 		}
     out[out.size() - 2] = '\n';
     out[out.size() - 1] = ']';
+    std::filesystem::create_directories(p.path / "src");
     std::ofstream stream(p.path / ".clangd");
     stream << out;
-    std::filesystem::create_directories(p.path / "src");
+    std::ofstream stream2(p.path / ".gitignore");
+    stream2 << "bin/*\ncache/*\ncache.json\n.clangd";
 	}
 }

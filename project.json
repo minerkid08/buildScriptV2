@@ -22,11 +22,6 @@
       "include": ["src/export"],
       "export": "src/export",
       "libs": ["json"]
-    },
-    {
-      "name": "json",
-      "type": "header",
-      "export": "."
     }
   ]
 }
