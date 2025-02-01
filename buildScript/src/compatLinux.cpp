@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-unsigned long getFileWriteTime(const char* filename)
+unsigned long long getFileWriteTime(const char* filename)
 {
 	struct stat fileStat;
 	stat(filename, &fileStat);

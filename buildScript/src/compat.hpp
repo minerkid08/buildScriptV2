@@ -1,4 +1,3 @@
 #pragma once
 
-unsigned long getFileWriteTime(const char* filename);
-unsigned long getSystemTime();
+unsigned long long getFileWriteTime(const char* filename);

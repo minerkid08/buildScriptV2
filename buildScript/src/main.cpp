@@ -236,9 +236,8 @@ int main(int argc, const char** argv)
 
 	if (mode == Mode::Build)
 	{
-		long now = std::time(0);
-		struct tm* tm = gmtime(&now);
-		nowTime = timegm(tm);
+		unsigned long long now = std::time(0);
+		nowTime = now;
 
 		buildProjectTree(projects[0], projects);
 
@@ -283,7 +282,7 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 	std::vector<std::filesystem::path> toBuild;
 	std::vector<std::filesystem::path> toProcess;
 
-	for (const std::string& str : project.build)
+	for (const std::filesystem::path& str : project.build)
 	{
 		toProcess.push_back(str);
 	}
@@ -380,6 +379,13 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 			else
 				runCmd("gcc", linkerArgs.c_str() + 1, &out);
 		}
+
+#ifdef _WIN64
+    if(project.type == ProjectType::Program)
+    {
+      outFile = outFile.replace_extension(".exe");
+    }
+#endif
 
 		if (std::filesystem::exists(outFile))
 			std::cout << "done\n";

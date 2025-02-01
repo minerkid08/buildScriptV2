@@ -22,10 +22,10 @@ struct Project
   ProjectType type;
   ProjectLang lang;
   std::filesystem::path path;
-	std::vector<std::string> build;
 	std::vector<std::string> libs;
-	std::vector<std::string> include;
-	std::vector<std::string> exportPaths;
+	std::vector<std::filesystem::path> build;
+	std::vector<std::filesystem::path> include;
+	std::vector<std::filesystem::path> exportPaths;
 
   bool built = false;
   bool processed = false;

@@ -60,10 +60,10 @@ int main()
 		}
 		std::cout << "configuring: " << p.name << '\n';
 		std::string out = "CompileFlags:\n  Add: [\n\n";
-		for (const std::string& str : p.libs)
+		for (const std::filesystem::path& str : p.libs)
 		{
 			Project p2;
-			findProject(str.c_str(), objects, &p2);
+			findProject(str.string().c_str(), objects, &p2);
 			for (const std::filesystem::path& path : p2.exportPaths)
 			{
 				out += "    -I";
