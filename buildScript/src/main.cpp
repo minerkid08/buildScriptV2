@@ -1,5 +1,6 @@
 #include "process.hpp"
 #include "project.hpp"
+#include "compat.hpp"
 
 #include "json/json.hpp"
 #include <cstring>
@@ -9,8 +10,6 @@
 #include <iostream>
 #include <ostream>
 #include <string>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <vector>
 
@@ -26,13 +25,6 @@ std::string target = "debug";
 
 unsigned long lastCompileTime;
 unsigned long nowTime;
-
-unsigned long getFileWriteTime(const char* filename)
-{
-	struct stat fileStat;
-	stat(filename, &fileStat);
-	return fileStat.st_mtime;
-}
 
 bool shouldBuildFile(const char* filename, const Project& p, const std::string& includePaths)
 {
