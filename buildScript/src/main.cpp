@@ -13,14 +13,6 @@
 #include <unistd.h>
 #include <vector>
 
-enum class Mode
-{
-	Build,
-	Configure
-};
-
-Mode mode = Mode::Build;
-
 std::string target = "debug";
 
 unsigned long lastCompileTime;
@@ -86,6 +78,10 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	outFile.replace_extension(".o");
 	outFile = project.path / "cache" / outFile;
 	args += outFile.string();
+  for(const std::string& s : project.compArgs)
+  {
+    args += s + ' ';
+  }
 	std::filesystem::remove(outFile);
 	std::filesystem::create_directories(outFile.parent_path());
 	std::cout << "building: " << std::filesystem::relative(file, project.path).string();
@@ -210,39 +206,11 @@ int main(int argc, const char** argv)
 			libsToFind.push_back(s);
 	}
 
-	if (mode == Mode::Configure)
-	{
-		std::string out;
-		for (const std::filesystem::path& path : projects[0].include)
-		{
-			out += "-I" + path.string() + '\n';
-		}
-		for (const Project& p : projects)
-		{
-			for (const std::string& s : projects[0].libs)
-			{
-				if (p.name != s)
-					continue;
-				for (const std::filesystem::path& path : p.exportPaths)
-				{
-					out += "-I" + path.string() + '\n';
-				}
-			}
-		}
-		std::ofstream stream("compile-flags.txt");
-		stream << out;
-		stream.close();
-	}
-
-	if (mode == Mode::Build)
-	{
-		unsigned long long now = std::time(0);
-		nowTime = now;
+		nowTime = getCurrentTime();
 
 		buildProjectTree(projects[0], projects);
 
 		std::cout << "build sucessful\n";
-	}
 }
 
 void buildProjectTree(Project& project, std::vector<Project>& projects)
@@ -313,6 +281,11 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 	}
 
 	std::string linkerArgs;
+
+  for(const std::string& s : project.linkArgs)
+  {
+    linkerArgs += ' ' + s;
+  }
 
 	while (toProcess.size() > 0)
 	{

@@ -101,6 +101,19 @@ void parseProject(const nlohmann::json& json, Project* p)
 		for (const std::string& str : json["libs"])
 			p->libs.push_back(str);
 	}
+
+	if (json.contains("compArgs"))
+	{
+		for (const std::string& str : json["compArgs"])
+			p->compArgs.push_back(str);
+	}
+
+	if (json.contains("linkArgs"))
+	{
+		for (const std::string& str : json["linkArgs"])
+			p->linkArgs.push_back(str);
+	}
+
 	if (json.contains("lang"))
 	{
 		std::string lang = json["lang"];

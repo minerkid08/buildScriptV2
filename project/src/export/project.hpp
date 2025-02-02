@@ -23,6 +23,8 @@ struct Project
   ProjectLang lang;
   std::filesystem::path path;
 	std::vector<std::string> libs;
+	std::vector<std::string> compArgs;
+	std::vector<std::string> linkArgs;
 	std::vector<std::filesystem::path> build;
 	std::vector<std::filesystem::path> include;
 	std::vector<std::filesystem::path> exportPaths;
