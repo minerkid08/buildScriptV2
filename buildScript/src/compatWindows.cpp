@@ -1,13 +1,12 @@
+#ifdef __WIN64
+#include "compat.hpp"
+
 #include <cstddef>
 #include <fileapi.h>
 #include <iostream>
 #include <minwindef.h>
 #include <timezoneapi.h>
 #include <winnt.h>
-#ifdef __WIN64
-
-#include "compat.hpp"
-
 #include <ctime>
 #include <windows.h>
 
