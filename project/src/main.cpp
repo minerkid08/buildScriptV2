@@ -1,7 +1,14 @@
 #include "export/project.hpp"
+#include "export/settings.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+
+void parseSettings(Settings* settings, const nlohmann::json& json)
+{
+  if(json.contains("noLibs"))
+    settings->noLibs = json["noLibs"];
+}
 
 void findProject(const char* name, const JsonObjects& objects, Project* project)
 {

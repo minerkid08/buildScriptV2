@@ -1,4 +1,3 @@
 bin/*
 cache/*
 cache.json
-.clangd

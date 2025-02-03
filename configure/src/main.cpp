@@ -1,4 +1,5 @@
 #include "project.hpp"
+#include "settings.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -28,25 +29,36 @@ int main()
 	}
 	objects.projectJson = json["projects"];
 
-	nlohmann::json json2;
-	std::string json2Path = objects.libPath.string() + "/project.json";
-	if (!std::filesystem::exists(json2Path))
-	{
-		std::cerr << "cant find \'" << json2Path << "\'\n";
-		return 1;
-	}
-	std::ifstream ifstream2(json2Path);
-	try
-	{
-		ifstream2 >> json2;
-	}
-	catch (nlohmann::json::parse_error e)
-	{
-		std::cerr << '\'' << json2Path << "\' parse error\n" << e.what() << '\n';
-		return 1;
-	}
+	Settings settings;
+	parseSettings(&settings, objects.projectJson);
 
-	objects.libJson = json2["projects"];
+	if (!settings.noLibs)
+	{
+		nlohmann::json json2;
+		std::string json2Path = objects.libPath.string() + "/project.json";
+		if (!std::filesystem::exists(json2Path))
+		{
+			std::cerr << "cant find \'" << json2Path << "\'\n";
+			return 1;
+		}
+		std::ifstream ifstream2(json2Path);
+		try
+		{
+			ifstream2 >> json2;
+		}
+		catch (nlohmann::json::parse_error e)
+		{
+			std::cerr << '\'' << json2Path << "\' parse error\n" << e.what() << '\n';
+			return 1;
+		}
+
+		objects.libJson = json2["projects"];
+	}
+	else
+	{
+		objects.libJson = objects.projectJson;
+		objects.libPath = objects.projectPath;
+	}
 
 	for (const nlohmann::json& j : objects.projectJson)
 	{
@@ -77,12 +89,12 @@ int main()
 			out += path.string();
 			out += ",\n";
 		}
-    out[out.size() - 2] = '\n';
-    out[out.size() - 1] = ']';
-    std::filesystem::create_directories(p.path / "src");
-    std::ofstream stream(p.path / ".clangd");
-    stream << out;
-    std::ofstream stream2(p.path / ".gitignore");
-    stream2 << "bin/*\ncache/*\ncache.json\n.clangd";
+		out[out.size() - 2] = '\n';
+		out[out.size() - 1] = ']';
+		std::filesystem::create_directories(p.path / "src");
+		std::ofstream stream(p.path / ".clangd");
+		stream << out;
+		std::ofstream stream2(p.path / ".gitignore");
+		stream2 << "bin/*\ncache/*\ncache.json\n.clangd";
 	}
 }

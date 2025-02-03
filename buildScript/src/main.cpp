@@ -1,6 +1,7 @@
+#include "compat.hpp"
 #include "process.hpp"
 #include "project.hpp"
-#include "compat.hpp"
+#include "settings.hpp"
 
 #include "json/json.hpp"
 #include <cstring>
@@ -78,10 +79,10 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	outFile.replace_extension(".o");
 	outFile = project.path / "cache" / outFile;
 	args += outFile.string();
-  for(const std::string& s : project.compArgs)
-  {
-    args += s + ' ';
-  }
+	for (const std::string& s : project.compArgs)
+	{
+		args += s + ' ';
+	}
 	std::filesystem::remove(outFile);
 	std::filesystem::create_directories(outFile.parent_path());
 	std::cout << "building: " << std::filesystem::relative(file, project.path).string();
@@ -122,8 +123,8 @@ int main(int argc, const char** argv)
 	{
 		if (strcmp(argv[1], "-c") == 0)
 		{
-      char* c = 0;
-      execvp("buildCfg", &c);
+			char* c = 0;
+			execvp("buildCfg", &c);
 		}
 	}
 
@@ -155,26 +156,35 @@ int main(int argc, const char** argv)
 	}
 	objects.projectJson = json["projects"];
 
-	nlohmann::json json2;
-	std::string json2Path = objects.libPath.string() + "/project.json";
-	if (!std::filesystem::exists(json2Path))
+	Settings settings;
+	parseSettings(&settings, json);
+	if (!settings.noLibs)
 	{
-		std::cerr << "cant find \'" << json2Path << "\'\n";
-		return 1;
-	}
-	std::ifstream ifstream2(json2Path);
-	try
-	{
-		ifstream2 >> json2;
-	}
-	catch (nlohmann::json::parse_error e)
-	{
-		std::cerr << '\'' << json2Path << "\' parse error\n" << e.what() << '\n';
-		return 1;
-	}
+		nlohmann::json json2;
+		std::string json2Path = objects.libPath.string() + "/project.json";
+		if (!std::filesystem::exists(json2Path))
+		{
+			std::cerr << "cant find \'" << json2Path << "\'\n";
+			return 1;
+		}
+		std::ifstream ifstream2(json2Path);
+		try
+		{
+			ifstream2 >> json2;
+		}
+		catch (nlohmann::json::parse_error e)
+		{
+			std::cerr << '\'' << json2Path << "\' parse error\n" << e.what() << '\n';
+			return 1;
+		}
 
-	objects.libJson = json2["projects"];
-
+		objects.libJson = json2["projects"];
+	}
+	else
+	{
+		objects.libJson = objects.projectJson;
+		objects.libPath = objects.projectPath;
+	}
 	std::vector<Project> projects;
 	projects.push_back({});
 
@@ -206,11 +216,11 @@ int main(int argc, const char** argv)
 			libsToFind.push_back(s);
 	}
 
-		nowTime = getCurrentTime();
+	nowTime = getCurrentTime();
 
-		buildProjectTree(projects[0], projects);
+	buildProjectTree(projects[0], projects);
 
-		std::cout << "build sucessful\n";
+	std::cout << "build sucessful\n";
 }
 
 void buildProjectTree(Project& project, std::vector<Project>& projects)
@@ -282,10 +292,10 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 
 	std::string linkerArgs;
 
-  for(const std::string& s : project.linkArgs)
-  {
-    linkerArgs += ' ' + s;
-  }
+	for (const std::string& s : project.linkArgs)
+	{
+		linkerArgs += ' ' + s;
+	}
 
 	while (toProcess.size() > 0)
 	{
@@ -354,10 +364,10 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		}
 
 #ifdef _WIN64
-    if(project.type == ProjectType::Program)
-    {
-      outFile = outFile.replace_extension(".exe");
-    }
+		if (project.type == ProjectType::Program)
+		{
+			outFile = outFile.replace_extension(".exe");
+		}
 #endif
 
 		if (std::filesystem::exists(outFile))
