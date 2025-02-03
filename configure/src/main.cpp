@@ -30,7 +30,7 @@ int main()
 	objects.projectJson = json["projects"];
 
 	Settings settings;
-	parseSettings(&settings, objects.projectJson);
+	parseSettings(&settings, json);
 
 	if (!settings.noLibs)
 	{

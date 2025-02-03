@@ -21,6 +21,7 @@ struct Project
 	std::string out;
   ProjectType type;
   ProjectLang lang;
+  bool autoBuild = true;
   std::filesystem::path path;
 	std::vector<std::string> libs;
 	std::vector<std::string> compArgs;

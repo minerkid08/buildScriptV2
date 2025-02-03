@@ -133,4 +133,9 @@ void parseProject(const nlohmann::json& json, Project* p)
 	{
 		p->lang = ProjectLang::CPP;
 	}
+  
+  if(json.contains("autoBuild"))
+  {
+    p->autoBuild = json["autoBuild"];
+  }
 }

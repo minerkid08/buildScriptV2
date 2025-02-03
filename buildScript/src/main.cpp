@@ -108,8 +108,8 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	}
 }
 
-void buildProject(Project& project, const std::vector<Project>& projects);
-void buildProjectTree(Project& project, std::vector<Project>& projects);
+void buildProject(Project& project, const std::vector<Project>& projects, bool mainProj = false);
+void buildProjectTree(Project& project, std::vector<Project>& projects, bool mainProj = false);
 
 int main(int argc, const char** argv)
 {
@@ -123,8 +123,8 @@ int main(int argc, const char** argv)
 	{
 		if (strcmp(argv[1], "-c") == 0)
 		{
-			char* c = 0;
-			execvp("buildCfg", &c);
+			execvp("buildCfg", nullptr);
+      return 0;
 		}
 	}
 
@@ -218,12 +218,12 @@ int main(int argc, const char** argv)
 
 	nowTime = getCurrentTime();
 
-	buildProjectTree(projects[0], projects);
+	buildProjectTree(projects[0], projects, true);
 
 	std::cout << "build sucessful\n";
 }
 
-void buildProjectTree(Project& project, std::vector<Project>& projects)
+void buildProjectTree(Project& project, std::vector<Project>& projects, bool mainProj)
 {
 	for (const std::string& lib : project.libs)
 	{
@@ -237,12 +237,14 @@ void buildProjectTree(Project& project, std::vector<Project>& projects)
 			}
 		}
 	}
-	buildProject(project, projects);
+	buildProject(project, projects, mainProj);
 }
 
-void buildProject(Project& project, const std::vector<Project>& projects)
+void buildProject(Project& project, const std::vector<Project>& projects, bool mainProj)
 {
 	project.processed = true;
+  if(!mainProj && !project.autoBuild)
+    return;
 	if (project.type == ProjectType::Header)
 		return;
 
@@ -297,6 +299,8 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 		linkerArgs += ' ' + s;
 	}
 
+  std::cout << "scanning for files to build \'" << project.name << "\' ";
+
 	while (toProcess.size() > 0)
 	{
 		std::filesystem::path curPath = toProcess[toProcess.size() - 1];
@@ -326,6 +330,8 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 	std::ofstream ofstream(project.path / "cache.json");
 	ofstream << cacheJson.dump(2);
 	ofstream.close();
+
+  std::cout << "done\n";
 
 	if (toBuild.size() > 0 || builtSomething)
 	{
