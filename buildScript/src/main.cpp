@@ -1,5 +1,7 @@
+#include "compat.hpp"
 #include "process.hpp"
 #include "project.hpp"
+#include "settings.hpp"
 
 #include "json/json.hpp"
 #include <cstring>
@@ -9,30 +11,13 @@
 #include <iostream>
 #include <ostream>
 #include <string>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <vector>
-
-enum class Mode
-{
-	Build,
-	Configure
-};
-
-Mode mode = Mode::Build;
 
 std::string target = "debug";
 
 unsigned long lastCompileTime;
 unsigned long nowTime;
-
-unsigned long getFileWriteTime(const char* filename)
-{
-	struct stat fileStat;
-	stat(filename, &fileStat);
-	return fileStat.st_mtime;
-}
 
 bool shouldBuildFile(const char* filename, const Project& p, const std::string& includePaths)
 {
@@ -94,6 +79,10 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	outFile.replace_extension(".o");
 	outFile = project.path / "cache" / outFile;
 	args += outFile.string();
+	for (const std::string& s : project.compArgs)
+	{
+		args += s + ' ';
+	}
 	std::filesystem::remove(outFile);
 	std::filesystem::create_directories(outFile.parent_path());
 	std::cout << "building: " << std::filesystem::relative(file, project.path).string();
@@ -119,8 +108,8 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	}
 }
 
-void buildProject(Project& project, const std::vector<Project>& projects);
-void buildProjectTree(Project& project, std::vector<Project>& projects);
+void buildProject(Project& project, const std::vector<Project>& projects, bool mainProj = false);
+void buildProjectTree(Project& project, std::vector<Project>& projects, bool mainProj = false);
 
 int main(int argc, const char** argv)
 {
@@ -134,8 +123,8 @@ int main(int argc, const char** argv)
 	{
 		if (strcmp(argv[1], "-c") == 0)
 		{
-      char* c = 0;
-      execvp("buildCfg", &c);
+			execvp("buildCfg", nullptr);
+      return 0;
 		}
 	}
 
@@ -167,26 +156,35 @@ int main(int argc, const char** argv)
 	}
 	objects.projectJson = json["projects"];
 
-	nlohmann::json json2;
-	std::string json2Path = objects.libPath.string() + "/project.json";
-	if (!std::filesystem::exists(json2Path))
+	Settings settings;
+	parseSettings(&settings, json);
+	if (!settings.noLibs)
 	{
-		std::cerr << "cant find \'" << json2Path << "\'\n";
-		return 1;
-	}
-	std::ifstream ifstream2(json2Path);
-	try
-	{
-		ifstream2 >> json2;
-	}
-	catch (nlohmann::json::parse_error e)
-	{
-		std::cerr << '\'' << json2Path << "\' parse error\n" << e.what() << '\n';
-		return 1;
-	}
+		nlohmann::json json2;
+		std::string json2Path = objects.libPath.string() + "/project.json";
+		if (!std::filesystem::exists(json2Path))
+		{
+			std::cerr << "cant find \'" << json2Path << "\'\n";
+			return 1;
+		}
+		std::ifstream ifstream2(json2Path);
+		try
+		{
+			ifstream2 >> json2;
+		}
+		catch (nlohmann::json::parse_error e)
+		{
+			std::cerr << '\'' << json2Path << "\' parse error\n" << e.what() << '\n';
+			return 1;
+		}
 
-	objects.libJson = json2["projects"];
-
+		objects.libJson = json2["projects"];
+	}
+	else
+	{
+		objects.libJson = objects.projectJson;
+		objects.libPath = objects.projectPath;
+	}
 	std::vector<Project> projects;
 	projects.push_back({});
 
@@ -218,43 +216,14 @@ int main(int argc, const char** argv)
 			libsToFind.push_back(s);
 	}
 
-	if (mode == Mode::Configure)
-	{
-		std::string out;
-		for (const std::filesystem::path& path : projects[0].include)
-		{
-			out += "-I" + path.string() + '\n';
-		}
-		for (const Project& p : projects)
-		{
-			for (const std::string& s : projects[0].libs)
-			{
-				if (p.name != s)
-					continue;
-				for (const std::filesystem::path& path : p.exportPaths)
-				{
-					out += "-I" + path.string() + '\n';
-				}
-			}
-		}
-		std::ofstream stream("compile-flags.txt");
-		stream << out;
-		stream.close();
-	}
+	nowTime = getCurrentTime();
 
-	if (mode == Mode::Build)
-	{
-		long now = std::time(0);
-		struct tm* tm = gmtime(&now);
-		nowTime = timegm(tm);
+	buildProjectTree(projects[0], projects, true);
 
-		buildProjectTree(projects[0], projects);
-
-		std::cout << "build sucessful\n";
-	}
+	std::cout << "build sucessful\n";
 }
 
-void buildProjectTree(Project& project, std::vector<Project>& projects)
+void buildProjectTree(Project& project, std::vector<Project>& projects, bool mainProj)
 {
 	for (const std::string& lib : project.libs)
 	{
@@ -268,12 +237,14 @@ void buildProjectTree(Project& project, std::vector<Project>& projects)
 			}
 		}
 	}
-	buildProject(project, projects);
+	buildProject(project, projects, mainProj);
 }
 
-void buildProject(Project& project, const std::vector<Project>& projects)
+void buildProject(Project& project, const std::vector<Project>& projects, bool mainProj)
 {
 	project.processed = true;
+  if(!mainProj && !project.autoBuild)
+    return;
 	if (project.type == ProjectType::Header)
 		return;
 
@@ -291,7 +262,7 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 	std::vector<std::filesystem::path> toBuild;
 	std::vector<std::filesystem::path> toProcess;
 
-	for (const std::string& str : project.build)
+	for (const std::filesystem::path& str : project.build)
 	{
 		toProcess.push_back(str);
 	}
@@ -323,6 +294,13 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 
 	std::string linkerArgs;
 
+	for (const std::string& s : project.linkArgs)
+	{
+		linkerArgs += ' ' + s;
+	}
+
+  std::cout << "scanning for files to build \'" << project.name << "\' ";
+
 	while (toProcess.size() > 0)
 	{
 		std::filesystem::path curPath = toProcess[toProcess.size() - 1];
@@ -352,6 +330,8 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 	std::ofstream ofstream(project.path / "cache.json");
 	ofstream << cacheJson.dump(2);
 	ofstream.close();
+
+  std::cout << "done\n";
 
 	if (toBuild.size() > 0 || builtSomething)
 	{
@@ -388,6 +368,13 @@ void buildProject(Project& project, const std::vector<Project>& projects)
 			else
 				runCmd("gcc", linkerArgs.c_str() + 1, &out);
 		}
+
+#ifdef _WIN64
+		if (project.type == ProjectType::Program)
+		{
+			outFile = outFile.replace_extension(".exe");
+		}
+#endif
 
 		if (std::filesystem::exists(outFile))
 			std::cout << "done\n";

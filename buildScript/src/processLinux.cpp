@@ -1,3 +1,4 @@
+#ifdef __linux
 #include "process.hpp"
 #include <cstring>
 #include <string>
@@ -81,3 +82,4 @@ int runCmd(const char* cmd, const char* args2, std::string* out)
 
 	return 0;
 }
+#endif

@@ -1,7 +1,14 @@
 #include "export/project.hpp"
+#include "export/settings.hpp"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+
+void parseSettings(Settings* settings, const nlohmann::json& json)
+{
+  if(json.contains("noLibs"))
+    settings->noLibs = json["noLibs"];
+}
 
 void findProject(const char* name, const JsonObjects& objects, Project* project)
 {
@@ -101,6 +108,19 @@ void parseProject(const nlohmann::json& json, Project* p)
 		for (const std::string& str : json["libs"])
 			p->libs.push_back(str);
 	}
+
+	if (json.contains("compArgs"))
+	{
+		for (const std::string& str : json["compArgs"])
+			p->compArgs.push_back(str);
+	}
+
+	if (json.contains("linkArgs"))
+	{
+		for (const std::string& str : json["linkArgs"])
+			p->linkArgs.push_back(str);
+	}
+
 	if (json.contains("lang"))
 	{
 		std::string lang = json["lang"];
@@ -113,4 +133,9 @@ void parseProject(const nlohmann::json& json, Project* p)
 	{
 		p->lang = ProjectLang::CPP;
 	}
+  
+  if(json.contains("autoBuild"))
+  {
+    p->autoBuild = json["autoBuild"];
+  }
 }
