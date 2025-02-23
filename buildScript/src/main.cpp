@@ -124,7 +124,7 @@ int main(int argc, const char** argv)
 		if (strcmp(argv[1], "-c") == 0)
 		{
 			execvp("buildCfg", nullptr);
-      return 0;
+			return 0;
 		}
 	}
 
@@ -243,8 +243,8 @@ void buildProjectTree(Project& project, std::vector<Project>& projects, bool mai
 void buildProject(Project& project, const std::vector<Project>& projects, bool mainProj)
 {
 	project.processed = true;
-  if(!mainProj && !project.autoBuild)
-    return;
+	if (!mainProj && !project.autoBuild)
+		return;
 	if (project.type == ProjectType::Header)
 		return;
 
@@ -299,7 +299,7 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 		linkerArgs += ' ' + s;
 	}
 
-  std::cout << "scanning for files to build \'" << project.name << "\' ";
+	std::cout << "scanning for files to build \'" << project.name << "\' ";
 
 	while (toProcess.size() > 0)
 	{
@@ -331,7 +331,7 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 	ofstream << cacheJson.dump(2);
 	ofstream.close();
 
-  std::cout << "done\n";
+	std::cout << "done\n";
 
 	if (toBuild.size() > 0 || builtSomething)
 	{
@@ -363,6 +363,8 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 		else
 		{
 			linkerArgs += " -o " + outFile.string();
+			if (project.type == ProjectType::Shared)
+				linkerArgs += " -shared";
 			if (project.lang == ProjectLang::CPP)
 				runCmd("g++", linkerArgs.c_str() + 1, &out);
 			else

@@ -7,7 +7,7 @@
 
 enum class ProjectType
 {
-  Program, Static, Header
+  Program, Static, Header, Shared
 };
 
 enum class ProjectLang
