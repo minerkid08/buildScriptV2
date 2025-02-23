@@ -71,7 +71,7 @@ int main()
 			parseProject(j, &p);
 		}
 		std::cout << "configuring: " << p.name << '\n';
-		std::string out = "CompileFlags:\n  Add: [\n\n";
+		std::string out = "CompileFlags:\n  Add: [\n";
 		for (const std::filesystem::path& str : p.libs)
 		{
 			Project p2;

@@ -82,19 +82,21 @@ void parseProject(const nlohmann::json& json, Project* p)
 		p->type = ProjectType::Program;
 	else if (type == "static")
 		p->type = ProjectType::Static;
+	else if (type == "shared")
+		p->type = ProjectType::Shared;
 
 	if (json.contains("build"))
 	{
 		for (const std::string& str : json["build"])
 			p->build.push_back(p->path / str);
 		p->build.push_back(p->path / "src");
+		p->include.push_back(p->path / "src");
 	}
 
 	if (json.contains("include"))
 	{
 		for (const std::string& str : json["include"])
 			p->include.push_back(p->path / str);
-		p->include.push_back(p->path / "src");
 	}
 
 	if (json.contains("export"))
