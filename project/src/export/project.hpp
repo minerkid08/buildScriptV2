@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <unordered_map>
 
 enum class ProjectType
 {
@@ -29,6 +30,7 @@ struct Project
 	std::vector<std::filesystem::path> build;
 	std::vector<std::filesystem::path> include;
 	std::vector<std::filesystem::path> exportPaths;
+  std::unordered_map<std::string, std::string> configArgs;
 
   bool built = false;
   bool processed = false;

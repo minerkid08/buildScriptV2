@@ -5,7 +5,6 @@
 
 #include "json/json.hpp"
 #include <cstring>
-#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -16,14 +15,22 @@
 
 std::string target = "debug";
 
+bool clean = false;
+
 unsigned long lastCompileTime;
 unsigned long nowTime;
 
 bool shouldBuildFile(const char* filename, const Project& p, const std::string& includePaths)
 {
-	if (target == "clean")
+	if (clean)
 		return true;
 	if (getFileWriteTime(filename) > lastCompileTime)
+		return true;
+	std::filesystem::path outFile = filename;
+	outFile = std::filesystem::relative(outFile, p.path);
+	outFile.replace_extension(".o");
+	outFile = p.path / "cache" / outFile;
+	if (!std::filesystem::exists(outFile))
 		return true;
 	std::string args = includePaths;
 	args += "-MM ";
@@ -77,8 +84,14 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	std::filesystem::path outFile = file;
 	outFile = std::filesystem::relative(outFile, project.path);
 	outFile.replace_extension(".o");
-	outFile = project.path / "cache" / outFile;
+	outFile = project.path / "cache" / target / outFile;
 	args += outFile.string();
+	if (project.configArgs.find(target) != project.configArgs.end())
+	{
+		args += ' ';
+		args += project.configArgs.at(target);
+	}
+
 	for (const std::string& s : project.compArgs)
 	{
 		args += s + ' ';
@@ -95,6 +108,8 @@ bool buildFile(const std::filesystem::path& file, const Project& project, const 
 	if (std::filesystem::exists(outFile))
 	{
 		std::cout << " done\n";
+		if (out.length() > 0)
+			std::cout << out << '\n';
 		return false;
 	}
 	else
@@ -249,9 +264,9 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 		return;
 
 	nlohmann::json cacheJson;
-	if (std::filesystem::exists(project.path / "cache.json"))
+	if (std::filesystem::exists(project.path / "cache" / target / "cache.json"))
 	{
-		std::ifstream ifstream(project.path / "cache.json");
+		std::ifstream ifstream(project.path / "cache" / target / "cache.json");
 		ifstream >> cacheJson;
 		lastCompileTime = cacheJson["time"];
 		ifstream.close();
@@ -318,7 +333,7 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 					std::filesystem::path linkerFile = p;
 					linkerFile = std::filesystem::relative(linkerFile, project.path);
 					linkerFile.replace_extension(".o");
-					linkerFile = project.path / "cache" / linkerFile;
+					linkerFile = project.path / "cache" / target / linkerFile;
 					linkerArgs += ' ';
 					linkerArgs += linkerFile.string();
 				}
@@ -327,7 +342,7 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 	}
 
 	cacheJson["time"] = nowTime;
-	std::ofstream ofstream(project.path / "cache.json");
+	std::ofstream ofstream(project.path / "cache" / target / "cache.json");
 	ofstream << cacheJson.dump(2);
 	ofstream.close();
 

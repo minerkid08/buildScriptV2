@@ -6,8 +6,8 @@
 
 void parseSettings(Settings* settings, const nlohmann::json& json)
 {
-  if(json.contains("noLibs"))
-    settings->noLibs = json["noLibs"];
+	if (json.contains("noLibs"))
+		settings->noLibs = json["noLibs"];
 }
 
 void findProject(const char* name, const JsonObjects& objects, Project* project)
@@ -135,9 +135,17 @@ void parseProject(const nlohmann::json& json, Project* p)
 	{
 		p->lang = ProjectLang::CPP;
 	}
-  
-  if(json.contains("autoBuild"))
-  {
-    p->autoBuild = json["autoBuild"];
-  }
+
+	if (json.contains("targetArgs"))
+	{
+		for (const auto& args : json["targetArgs"].items())
+		{
+			p->configArgs[args.key()] = args.value();
+		}
+	}
+
+	if (json.contains("autoBuild"))
+	{
+		p->autoBuild = json["autoBuild"];
+	}
 }

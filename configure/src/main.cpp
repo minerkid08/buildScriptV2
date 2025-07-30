@@ -79,14 +79,14 @@ int main()
 			for (const std::filesystem::path& path : p2.exportPaths)
 			{
 				out += "    -I";
-				out += path.string();
+				out += std::filesystem::absolute(path).string();
 				out += ",\n";
 			}
 		}
 		for (const std::filesystem::path& path : p.include)
 		{
 			out += "    -I";
-			out += path.string();
+			out += std::filesystem::absolute(path).string();
 			out += ",\n";
 		}
 		out[out.size() - 2] = '\n';

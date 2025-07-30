@@ -5,6 +5,16 @@
       "type": "program",
       "out": "main",
       "build": [],
+      "libs": ["project", "json"],
+      "targetArgs": {
+        "debug": "-DDEBUG"
+      }
+    },
+    {
+      "name": "run",
+      "type": "program",
+      "out": "main",
+      "build": [],
       "libs": ["project", "json"]
     },
     {

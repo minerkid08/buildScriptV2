@@ -2,6 +2,7 @@
 #include "process.hpp"
 #include <cstring>
 #include <string>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
@@ -50,11 +51,11 @@ int runCmd(const char* cmd, const char* args2, std::string* out)
 
 		data.push_back(nullptr);
 
-		close(pipeRead);
-
 		dup2(pipeWrite, STDOUT_FILENO);
 		dup2(pipeWrite, STDERR_FILENO);
-		close(pipeWrite);
+
+    close(pipeWrite);
+    close(pipeRead);
 
 		execvp(cmd, data.data());
 		perror("execlp");
@@ -63,8 +64,8 @@ int runCmd(const char* cmd, const char* args2, std::string* out)
 	else
 	{
 		// Parent process
-		close(pipeWrite);
 
+		close(pipeWrite);
 		if (out)
 		{
 			char buffer[256];
@@ -75,11 +76,17 @@ int runCmd(const char* cmd, const char* args2, std::string* out)
 				*out += std::string(buffer, bytesRead);
 			}
 		}
+		else
+		{
+      wait(nullptr);
+		}
 
 		close(pipeRead);
-		wait(nullptr);
 	}
-
 	return 0;
 }
+#endif
+
+#ifdef DEBUG
+#pragma message("help")
 #endif
