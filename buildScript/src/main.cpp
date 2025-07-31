@@ -29,8 +29,10 @@ bool shouldBuildFile(const char* filename, const Project& p, const std::string& 
 	std::filesystem::path outFile = filename;
 	outFile = std::filesystem::relative(outFile, p.path);
 	outFile.replace_extension(".o");
-	outFile = p.path / "cache" / outFile;
+	outFile = p.path / "cache" / target / outFile;
 	if (!std::filesystem::exists(outFile))
+		return true;
+	if (getFileWriteTime(outFile.string().c_str()) < getFileWriteTime(filename))
 		return true;
 	std::string args = includePaths;
 	args += "-MM ";
@@ -146,8 +148,20 @@ int main(int argc, const char** argv)
 	std::string proj;
 
 	proj = argv[1];
-	if (argc == 3)
+	if (argc > 2)
 		target = argv[2];
+
+	if (target == "clean")
+	{
+		clean = true;
+		target = "debug";
+	}
+
+	if (argc > 3)
+	{
+		if (strcmp(argv[3], "clean"))
+			clean = true;
+	}
 
 	JsonObjects objects;
 	objects.projectPath = std::filesystem::absolute("./");
@@ -351,7 +365,7 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 	if (toBuild.size() > 0 || builtSomething)
 	{
 		project.built = true;
-		std::cout << "--- Building Target \'" << project.name << "\' ---\n";
+		std::cout << "\n--- Building Target \'" << project.name << "\' ---\n";
 
 		for (const std::filesystem::path& file : toBuild)
 		{

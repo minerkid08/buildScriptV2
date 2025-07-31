@@ -86,7 +86,3 @@ int runCmd(const char* cmd, const char* args2, std::string* out)
 	return 0;
 }
 #endif
-
-#ifdef DEBUG
-#pragma message("help")
-#endif
