@@ -362,6 +362,21 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 
 	std::cout << "done\n";
 
+	nlohmann::json cacheJson2;
+	if (std::filesystem::exists(project.path / "cache/cache.json"))
+	{
+		std::ifstream ifstream(project.path / "cache/cache.json");
+		ifstream >> cacheJson2;
+		std::string prevTarget = cacheJson2["prevTarget"];
+		ifstream.close();
+		if (prevTarget != target)
+			builtSomething = true;
+	}
+	cacheJson2["prevTarget"] = target;
+	std::ofstream ofstream2(project.path / "cache/cache.json");
+	ofstream2 << cacheJson2.dump(2);
+	ofstream2.close();
+
 	if (toBuild.size() > 0 || builtSomething)
 	{
 		project.built = true;
