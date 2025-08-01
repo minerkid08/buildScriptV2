@@ -97,4 +97,8 @@ int main()
 		std::ofstream stream2(p.path / ".gitignore");
 		stream2 << "bin/*\ncache/*\ncache.json\n.clangd";
 	}
+#ifdef _WIN64
+  std::ofstream compileFlags(".\\compile_flags.txt");
+  compileFlags << "--target=x86_64-w64-mingw64";
+#endif
 }
