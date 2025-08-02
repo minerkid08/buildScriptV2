@@ -301,6 +301,13 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 	for (const std::filesystem::path& str : project.include)
 		includePaths += std::string("-I") + str.string() + ' ';
 
+	std::string linkerArgs;
+
+	for (const std::string& s : project.linkArgs)
+	{
+		linkerArgs += ' ' + s;
+	}
+
 	bool builtSomething = false;
 	for (const Project& p : projects)
 	{
@@ -315,17 +322,15 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 					linkerLibs += ' ';
 					linkerLibs += (p.path / "bin" / p.out).string();
 				}
+				if (p.type == ProjectType::Static || p.type == ProjectType::Header)
+				{
+					for (const std::string& str : p.linkArgs)
+						linkerArgs += " " + str;
+				}
 				builtSomething |= p.built;
 				break;
 			}
 		}
-	}
-
-	std::string linkerArgs;
-
-	for (const std::string& s : project.linkArgs)
-	{
-		linkerArgs += ' ' + s;
 	}
 
 	std::cout << "scanning for files to build \'" << project.name << "\' ";
