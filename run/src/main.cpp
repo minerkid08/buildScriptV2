@@ -1,5 +1,6 @@
 #include "project.hpp"
 #include "unistd.h"
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 
@@ -39,7 +40,7 @@ int main(int argc, const char** argv)
 	std::string outFile = proj.out;
 	std::vector<char*> args;
 	args.push_back((char*)outFile.c_str());
-	for (int i = 0; i < argc - 2; i++)
+	for (int i = 2; i < argc; i++)
 	{
 		args.push_back((char*)argv[i]);
 	}

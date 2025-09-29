@@ -2,8 +2,10 @@
 #include "process.hpp"
 #include "project.hpp"
 #include "settings.hpp"
+#include "tasks.hpp"
 
 #include "json/json.hpp"
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -147,9 +149,13 @@ int main(int argc, const char** argv)
 
 	std::string proj;
 
+	int curArg = 2;
 	proj = argv[1];
 	if (argc > 2)
+	{
 		target = argv[2];
+		curArg = 3;
+	}
 
 	if (target == "clean")
 	{
@@ -159,8 +165,27 @@ int main(int argc, const char** argv)
 
 	if (argc > 3)
 	{
-		if (strcmp(argv[3], "clean"))
+		if (strcmp(argv[3], "clean") == 0)
+		{
 			clean = true;
+			curArg = 4;
+		}
+	}
+
+
+	int threadc = 4;
+	if (argc > curArg)
+	{
+		if (strcmp(argv[curArg], "-n") == 0)
+		{
+			if (argc > curArg + 1)
+				threadc = atoi(argv[curArg + 1]);
+			else
+      {
+				printf("no arg specified for param -n\n");
+        return 1;
+      }
+		}
 	}
 
 	JsonObjects objects;
@@ -246,6 +271,8 @@ int main(int argc, const char** argv)
 	}
 
 	nowTime = getCurrentTime();
+
+	initThreads(threadc);
 
 	buildProjectTree(projects[0], projects, true);
 
@@ -389,11 +416,13 @@ void buildProject(Project& project, const std::vector<Project>& projects, bool m
 
 		for (const std::filesystem::path& file : toBuild)
 		{
-			if (buildFile(file, project, includePaths))
-			{
-				std::cout << "build failed\n";
-				exit(1);
-			}
+			addCompileTask(file.string(), includePaths, &project, target);
+		}
+
+		if (runTasks() == false)
+		{
+			std::cout << "build failed\n";
+			exit(1);
 		}
 
 		std::filesystem::path outFile = project.path / "bin" / project.out;

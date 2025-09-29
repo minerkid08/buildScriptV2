@@ -1,3 +1,4 @@
+#include <iostream>
 #ifdef __linux
 #include "process.hpp"
 #include <cstring>
@@ -54,8 +55,8 @@ int runCmd(const char* cmd, const char* args2, std::string* out)
 		dup2(pipeWrite, STDOUT_FILENO);
 		dup2(pipeWrite, STDERR_FILENO);
 
-    close(pipeWrite);
-    close(pipeRead);
+		close(pipeWrite);
+		close(pipeRead);
 
 		execvp(cmd, data.data());
 		perror("execlp");
@@ -78,7 +79,7 @@ int runCmd(const char* cmd, const char* args2, std::string* out)
 		}
 		else
 		{
-      wait(nullptr);
+			wait(nullptr);
 		}
 
 		close(pipeRead);
