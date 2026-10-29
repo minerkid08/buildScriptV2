@@ -5,6 +5,7 @@
 #include "tasks.hpp"
 
 #include "json/json.hpp"
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -36,39 +37,48 @@ bool shouldBuildFile(const char* filename, const Project& p, const std::string& 
 		return true;
 	if (getFileWriteTime(outFile.string().c_str()) < getFileWriteTime(filename))
 		return true;
-	std::string args = includePaths;
-	args += "-MM ";
-	args += filename;
-	std::string out;
-	runCmd("g++", args.c_str(), &out);
+
+	outFile.replace_extension(".d");
+
+	if (!std::filesystem::exists(outFile))
+		return false;
 
 	std::vector<std::string> files;
 
-	std::string str;
+	FILE* file = fopen(outFile.string().c_str(), "rb");
 
-	char reading = 0;
-	for (int i = 0; i < out.size(); i++)
+	fseek(file, 0, SEEK_END);
+	int len = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	char* data = new char[len];
+	fread(data, 1, len, file);
+	fclose(file);
+
+	bool start = false;
+	std::string name = "";
+	for (int i = 0; i < len; i++)
 	{
-		if (out[i] == ' ' && reading < 2)
+		char c = data[i];
+		if (!start)
 		{
-			reading++;
-			continue;
+			if (c == ':')
+				start = true;
 		}
-		if (reading > 1)
+		else
 		{
-			if (out[i] == ' ')
+			if (c == ' ' || c == '\n' || c == '\\')
 			{
-				if (str.size() > 0)
+				if (name.size() > 0)
 				{
-					files.push_back(str);
-					str = "";
+					files.emplace_back(name);
+					name = "";
 				}
+				continue;
 			}
-			else if (out[i] != '\\' && out[i] != '\n')
-				str += out[i];
+			name += c;
 		}
 	}
-	files.push_back(str);
 
 	for (const std::string& file : files)
 	{
@@ -172,7 +182,6 @@ int main(int argc, const char** argv)
 		}
 	}
 
-
 	int threadc = 4;
 	if (argc > curArg)
 	{
@@ -181,10 +190,10 @@ int main(int argc, const char** argv)
 			if (argc > curArg + 1)
 				threadc = atoi(argv[curArg + 1]);
 			else
-      {
+			{
 				printf("no arg specified for param -n\n");
-        return 1;
-      }
+				return 1;
+			}
 		}
 	}
 

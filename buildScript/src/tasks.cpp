@@ -41,7 +41,7 @@ void* threadFunc(void* arg)
 		if (thread->task == 0)
 			perror("tried to run null task");
 
-		std::string args = thread->task->includePaths + "-c -g " + thread->task->filename + " -o ";
+		std::string args = thread->task->includePaths + "-c -g -MMD " + thread->task->filename + " -o ";
 		std::filesystem::path outFile = thread->task->filename;
 		outFile = std::filesystem::relative(outFile, thread->task->project->path);
 		outFile.replace_extension(".o");
@@ -59,7 +59,7 @@ void* threadFunc(void* arg)
 		}
 		std::filesystem::remove(outFile);
 		std::filesystem::create_directories(outFile.parent_path());
-    thread->task->out = "";
+		thread->task->out = "";
 		if (thread->task->project->lang == ProjectLang::CPP)
 			runCmd("g++", args.c_str(), &thread->task->out);
 		else
@@ -172,7 +172,12 @@ bool runTasks()
 		fflush(stdout);
 
 		if (threadRunning == 0 && i == tasks.size())
+		{
+			for (int i = 0; i < threads.size(); i++)
+				printf("\033[2K\033[1F");
+			fflush(stdout);
 			break;
+		}
 	}
 
 	bool failed = true;
